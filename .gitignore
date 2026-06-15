@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDEs / editors
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Model weights and large binaries (use Git LFS instead)
+motor_ia/pesos/
+*.pth
+*.pt
+
+# Logs and runtime files
+*.log
+*.sqlite3
+
+# Secrets and environment
+.env
+.env.*
+secrets/
+*.pem
+*.key
+
+# Jupyter
+.ipynb_checkpoints/
