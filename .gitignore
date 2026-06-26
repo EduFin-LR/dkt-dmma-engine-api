@@ -29,9 +29,9 @@ build/
 Thumbs.db
 
 # Model weights and large binaries (use Git LFS instead)
-motor_ia/pesos/
-*.pth
-*.pt
+# motor_ia/pesos/
+# *.pth
+# *.pt
 
 # Logs and runtime files
 *.log
