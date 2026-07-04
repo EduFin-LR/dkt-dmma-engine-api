@@ -15,11 +15,28 @@ app = FastAPI(
 
 modelo_predictivo = None
 
-# 1. Definimos los "Contratos" (Data Transfer Objects)
+# 🔥 1. DICCIONARIO DE HOMÓNIMOS (Mapeo de tus 12 Skills locales al espacio de ASSISTments)
+# Reemplaza estos números muestra (101, 102...) por los índices reales de tu entrenamiento.
+MAPEO_HOMONIMOS = {
+    1: 101,   # Finanzas Personales Básicas - Ingresos y Gastos
+    2: 102,   # Gastos Hormiga y Vampiro
+    3: 103,   # Ahorro e Inflación
+    4: 104,   # Costo de Oportunidad y Estafas
+    5: 105,   # Ciberseguridad Bancaria
+    6: 106,   # Salud Financiera (Superávit)
+    7: 201,   # Módulo 2 - Introducción al Crédito
+    8: 202,   # Historial Crediticio (Infocorp)
+    9: 203,   # Tarjetas de Crédito y Tasas
+    10: 204,  # Financiamiento Sostenible
+    11: 205,  # Inversiones y Riesgo
+    12: 206   # Planificación de Futuro
+}
+
+# 2. Definimos los "Contratos" (Data Transfer Objects)
 class SolicitudPrediccion(BaseModel):
     user_id: str = Field(..., description="ID del usuario en Spring Boot")
     secuencia_interacciones: List[int] = Field(..., description="Historial de IDs codificados (Habilidad + Acierto/Error)")
-    habilidad_objetivo: int = Field(..., description="El ID del tema financiero que queremos evaluar (Ej. 2 para Presupuesto)")
+    habilidad_objetivo: int = Field(..., description="El ID del tema financiero local (1 al 12)")
     dias_inactividad: float = Field(..., description="Tiempo transcurrido desde su última sesión en días")
 
 class RespuestaPrediccion(BaseModel):
@@ -27,21 +44,23 @@ class RespuestaPrediccion(BaseModel):
     habilidad_objetivo: int
     probabilidad_base_dkt: float
     probabilidad_final_dmma: float
-    nivel_recomendado: str
+    nivel_recommended: str
 
-# 2. Evento de Arranque
+# 3. Evento de Arranque
 @app.on_event("startup")
 def cargar_modelo():
     global modelo_predictivo
     print("Iniciando el motor y cargando la memoria de la IA...")
-    
-    # IMPORTANTE: Reemplaza 120 por el número exacto de habilidades de tu entrenamiento
-    modelo_predictivo = DKTModel(num_skills=12368, embed_dim=32, hidden_dim=64)
-    modelo_predictivo.load_state_dict(torch.load("motor_ia/pesos/modelo_dkt_finanzas.pth", map_location=torch.device('cpu')))
-    modelo_predictivo.eval()
-    print("¡Modelo cargado y listo para la inferencia!")
+    try:
+        # Inicialización basada en las dimensiones del preentrenamiento de ASSISTments 2009
+        modelo_predictivo = DKTModel(num_skills=12368, embed_dim=32, hidden_dim=64)
+        modelo_predictivo.load_state_dict(torch.load("motor_ia/pesos/modelo_dkt_finanzas.pth", map_location=torch.device('cpu')))
+        modelo_predictivo.eval()
+        print("¡Modelo cargado y listo para la inferencia!")
+    except Exception as e:
+        print(f"❌ Error crítico cargando los pesos .pth: {str(e)}")
 
-# 3. La Matemática del Olvido (Tu Innovación)
+# 4. La Matemática del Olvido (DMMA)
 def aplicar_curva_olvido_dmma(probabilidad_base: float, dias_transcurridos: float) -> float:
     if dias_transcurridos <= 0:
         return probabilidad_base
@@ -52,30 +71,38 @@ def aplicar_curva_olvido_dmma(probabilidad_base: float, dias_transcurridos: floa
     
     return round(probabilidad_final, 4)
 
-# 4. El Endpoint Principal (Donde ocurre la magia)
+# 5. El Endpoint Principal 
 @app.post("/predecir-nivel", response_model=RespuestaPrediccion)
 def predecir_nivel_conocimiento(solicitud: SolicitudPrediccion):
     if not modelo_predictivo:
         raise HTTPException(status_code=500, detail="El modelo DKT no está en memoria.")
     
+    # 🔍 TRADUCCIÓN DE HOMÓNIMO
+    if solicitud.habilidad_objetivo not in MAPEO_HOMONIMOS:
+        raise HTTPException(status_code=400, detail=f"La habilidad local {solicitud.habilidad_objetivo} no está mapeada en el diccionario de homónimos.")
+    
+    id_habilidad_modelo = MAPEO_HOMONIMOS[solicitud.habilidad_objetivo]
+    
     try:
-        # A. Preparamos el array de Python para que PyTorch lo entienda (Tensor)
-        # Le añadimos unos corchetes extra [ ] para simular el "batch_size" de 1
-        tensor_historial = torch.tensor([solicitud.secuencia_interacciones], dtype=torch.long)
-        
-        # B. Inferencia Estática (DKT)
-        with torch.no_grad(): # Desactivamos el entrenamiento para ahorrar RAM y ganar velocidad
-            predicciones = modelo_predictivo(tensor_historial)
+        # 🛡️ PROTECCIÓN CONTRA HISTORIAL VACÍO
+        if not solicitud.secuencia_interacciones:
+            prob_base = 0.5000  # Asignamos un comportamiento neutral por defecto
+            print(f"[IA] Usuario {solicitud.user_id} no registra historial. Retornando probabilidad base por defecto.")
+        else:
+            # Preparamos el array de Python para que PyTorch lo entienda (Tensor)
+            tensor_historial = torch.tensor([solicitud.secuencia_interacciones], dtype=torch.long)
             
-            # predicciones tiene 3 dimensiones: [lote, tiempo, habilidades]
-            # Queremos: lote 0, el ÚLTIMO paso de tiempo (-1), y la habilidad específica que pide Java
-            prob_base = predicciones[0, -1, solicitud.habilidad_objetivo].item()
-            prob_base = round(prob_base, 4)
+            # Inferencia Estática (DKT)
+            with torch.no_grad():
+                predicciones = modelo_predictivo(tensor_historial)
+                # Extraemos la probabilidad usando el ID que el modelo ASSISTments sí entiende
+                prob_base = predicciones[0, -1, id_habilidad_modelo].item()
+                prob_base = round(prob_base, 4)
             
-        # C. Inferencia Dinámica Temporal (DMMA)
+        # Inferencia Dinámica Temporal (DMMA)
         prob_final = aplicar_curva_olvido_dmma(prob_base, solicitud.dias_inactividad)
         
-        # D. Motor de Reglas Simple para ayudar a Spring Boot
+        # Motor de Reglas Adaptativo para Spring Boot
         if prob_final >= 0.75:
             dificultad = "Nivel 3 (Avanzado)"
         elif prob_final >= 0.40:
@@ -85,11 +112,11 @@ def predecir_nivel_conocimiento(solicitud: SolicitudPrediccion):
             
         return RespuestaPrediccion(
             user_id=solicitud.user_id,
-            habilidad_objetivo=solicitud.habilidad_objetivo,
+            habilidad_objetivo=solicitud.habilidad_objetivo, # Retornamos el ID local para que Spring Boot lo entienda
             probabilidad_base_dkt=prob_base,
             probabilidad_final_dmma=prob_final,
-            nivel_recomendado=dificultad
+            nivel_recommended=dificultad
         )
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error en el procesamiento de tensores: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error en el procesamiento de tensores en PyTorch: {str(e)}")
