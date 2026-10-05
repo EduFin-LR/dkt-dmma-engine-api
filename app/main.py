@@ -63,7 +63,7 @@ def cargar_modelo_si_existe() -> None:
             "No existe un checkpoint entrenado. "
             "La API está disponible en modo piloto/no adaptativo."
         )
-        print(f"⚠️ [DKT-FORGET] {model_load_error}")
+        print(f"[DKT-FORGET] ADVERTENCIA: {model_load_error}")
         return
 
     try:
@@ -81,14 +81,14 @@ def cargar_modelo_si_existe() -> None:
             )
 
         print(
-            "✅ [DKT-FORGET] Modelo cargado correctamente "
+            "[DKT-FORGET] Modelo cargado correctamente "
             f"({num_skills} skills)."
         )
     except Exception as exc:
         modelo_predictivo = None
         checkpoint = None
         model_load_error = str(exc)
-        print(f"❌ [DKT-FORGET] No se pudo cargar el checkpoint: {exc}")
+        print(f"[DKT-FORGET] ERROR: No se pudo cargar el checkpoint: {exc}")
 
 
 @asynccontextmanager
