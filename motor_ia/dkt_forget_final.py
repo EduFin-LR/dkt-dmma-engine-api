@@ -223,6 +223,7 @@ class DKTForgetDataset(Dataset):
 
         self.df["timestamp"] = pd.to_datetime(
             self.df["timestamp"],
+            format="ISO8601",
             utc=True,
             errors="raise",
         )
